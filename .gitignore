@@ -1,0 +1,8 @@
+.venv/
+venv/
+__pycache__/
+*.bin
+*.sqlite3
+.env
+tickets.json
+*.db
