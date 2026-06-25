@@ -1,3 +1,10 @@
+---
+title: Ops Agent
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Ops Agent
 
 Ops Agent adalah eksperimen multi-agent IT/ops berbasis LangGraph untuk routing ticket, tool calling, RAG runbook, human-in-the-loop approval, dan checkpoint persistence.
@@ -87,6 +94,33 @@ Untuk evaluasi routing supervisor:
 
 ```powershell
 python eval_routing.py
+```
+
+## Hugging Face Spaces
+
+Space ini dikonfigurasi memakai Docker SDK. File penting untuk deploy:
+
+- `Dockerfile` menjalankan web app Gradio di port `7860`.
+- `app.py` adalah UI Hugging Face Spaces.
+- `README.md` punya metadata `sdk: docker` dan `app_port: 7860`.
+
+Set secret berikut di Hugging Face Space:
+
+```text
+GROQ_API_KEY=your_groq_api_key
+```
+
+Deploy target:
+
+```text
+https://huggingface.co/spaces/cjoyy/ops-agent
+```
+
+Untuk menjalankan container lokal:
+
+```powershell
+docker build -t ops-agent .
+docker run --env-file .env -p 7860:7860 ops-agent
 ```
 
 ## Hasil Eval Routing Accuracy
