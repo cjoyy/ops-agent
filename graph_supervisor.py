@@ -82,11 +82,13 @@ def refund_policy(reason: str) -> str:
 def supervisor(state: GraphState) -> dict:
     if state.get("needs_followup") and state.get("followup_category"):
         category = state["followup_category"]
-        print("[DEBUG] supervisor pakai followup_category:", category)
+        if state.get("debug", True):
+            print("[DEBUG] supervisor pakai followup_category:", category)
         return {"category": category}
 
     result = classifier.invoke(state["messages"])
-    print("Debug classification:", result)
+    if state.get("debug", True):
+        print("Debug classification:", result)
     return {"category": result.category}
 
 

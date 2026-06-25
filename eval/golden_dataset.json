@@ -1,0 +1,122 @@
+[
+  {
+    "ticket": "Server auth-api down sejak 10 menit lalu, health check gagal terus",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Saya mau cek status invoice INV-2024-001",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Ada percobaan login dari lokasi asing ke akun saya",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "API gateway sering balikin error 500 untuk endpoint /orders",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Tolong proses refund karena saya kena double charge bulan ini",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Saya melihat data pelanggan lain muncul di dashboard saya",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "Service worker stuck dan queue tidak jalan sejak deployment terakhir",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Kartu kredit saya sudah didebit tapi invoice masih unpaid",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Saya lupa password akun internal dan butuh reset akses",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "Log server menunjukkan out of memory lalu aplikasi crash",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Subscription saya mau dibatalkan sebelum tagihan berikutnya",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Token API saya sepertinya bocor karena ada request tidak dikenal",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "Saya nggak bisa akses portal billing saya, errornya access denied",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Saya butuh invoice bulan lalu tapi halaman invoice blank putih",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Saya tidak bisa download invoice PDF, tombol download error 500",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Saya ingin mengubah alamat penagihan perusahaan di invoice",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Ada user ex-karyawan yang masih bisa login ke sistem internal",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "Database connection timeout bikin login service gagal",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Payment gateway mengembalikan status declined untuk semua transaksi",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Saya perlu bukti pembayaran untuk PO bulan Juni",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Akun saya terkunci setelah terlalu banyak percobaan login gagal",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "MFA saya hilang karena ganti HP, tolong reset faktor autentikasi",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "Endpoint /payments lambat dan akhirnya timeout",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Saya ditagih dua kali untuk plan yang sama",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Ada file log yang berisi password user dalam plain text",
+    "expected_category": "security"
+  },
+  {
+    "ticket": "Billing portal menampilkan amount invoice salah setelah refresh",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Saya tidak bisa akses halaman refund karena muncul forbidden",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Customer VIP tidak bisa bayar karena checkout page crash",
+    "expected_category": "technical"
+  },
+  {
+    "ticket": "Mohon kirim ulang invoice karena email billing tidak menerima notifikasi",
+    "expected_category": "billing"
+  },
+  {
+    "ticket": "Saya curiga ada perubahan role admin tanpa approval",
+    "expected_category": "security"
+  }
+]
