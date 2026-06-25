@@ -1,4 +1,7 @@
 langchain
+langchain-community
 langchain-groq
 langgraph
 python-dotenv
+chromadb
+sentence-transformers

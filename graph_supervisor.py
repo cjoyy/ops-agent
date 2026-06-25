@@ -2,13 +2,15 @@ from typing import Annotated, Literal, Optional, TypedDict
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
+
+from rag_setup import get_retriever
 
 
 class TicketClassification(BaseModel):
@@ -46,6 +48,7 @@ class GraphState(TypedDict):
     needs_followup: bool
     followup_category: Optional[str]
     resolved_categories: list
+    runbook_context: str
 
 
 load_dotenv()
@@ -101,7 +104,7 @@ def detect_followup(state: GraphState, agent_category: str, final_answer: str) -
     decision = followup_classifier.invoke(prompt)
     resolved_categories = state.get("resolved_categories", []) + [agent_category]
 
-    if decision.followup_category in resolved_categories:
+    if not decision.needs_followup or decision.followup_category in resolved_categories:
         needs_followup = False
         followup_category = None
     else:
@@ -121,11 +124,22 @@ def technical_agent(state: GraphState) -> dict:
     print("[DEBUG] masuk ke technical_agent")
     original_ticket = get_message_content(state["messages"][0]).lower()
     should_bind_restart_tool = "restart" in original_ticket
+    runbook_context = state.get("runbook_context") or "Tidak ada referensi runbook yang ditemukan."
+    system_prompt = SystemMessage(
+        content=(
+            "Kamu adalah technical_agent untuk IT/ops. Gunakan runbook_context "
+            "sebagai referensi utama sebelum menjawab. Jika runbook_context tidak "
+            "relevan atau kosong, katakan bahwa tidak ada referensi spesifik dan "
+            "beri saran umum secara hati-hati.\n\n"
+            f"runbook_context:\n{runbook_context}"
+        )
+    )
+    agent_messages = [system_prompt] + state["messages"]
     model_with_tools = model.bind_tools([restart_service])
     response = (
-        model_with_tools.invoke(state["messages"])
+        model_with_tools.invoke(agent_messages)
         if should_bind_restart_tool
-        else model.invoke(state["messages"])
+        else model.invoke(agent_messages)
     )
 
     if response.tool_calls:
@@ -143,9 +157,7 @@ def technical_agent(state: GraphState) -> dict:
                 )
             )
 
-        final_response = model.invoke(
-            state["messages"] + [response] + tool_messages
-        )
+        final_response = model.invoke(agent_messages + [response] + tool_messages)
     else:
         print("[DEBUG] tool triggered:", False)
         final_response = response
@@ -153,6 +165,22 @@ def technical_agent(state: GraphState) -> dict:
     print("[DEBUG] final answer:", final_response.content)
     followup_state = detect_followup(state, "technical", final_response.content)
     return {"messages": [final_response], **followup_state}
+
+
+def retrieve_runbook(state: GraphState) -> dict:
+    print("[DEBUG] masuk ke retrieve_runbook")
+    ticket = get_message_content(state["messages"][0])
+    retriever = get_retriever()
+    docs = retriever.invoke(ticket)
+    context_parts = []
+
+    for doc in docs:
+        source = doc.metadata.get("source", "unknown")
+        context_parts.append(f"Source: {source}\n{doc.page_content}")
+
+    runbook_context = "\n\n---\n\n".join(context_parts)
+    print("[DEBUG] runbook_context:\n", runbook_context)
+    return {"runbook_context": runbook_context}
 
 
 def billing_agent(state: GraphState) -> dict:
@@ -237,7 +265,7 @@ def security_agent(state: GraphState) -> dict:
 def route_to_agent(state: GraphState) -> str:
     category = state["category"]
     if category == "technical":
-        return "technical_agent"
+        return "retrieve_runbook"
     if category == "billing":
         return "billing_agent"
     if category == "security":
@@ -262,6 +290,7 @@ def check_followup(state: GraphState) -> str:
 
 graph = StateGraph(GraphState)
 graph.add_node("supervisor", supervisor)
+graph.add_node("retrieve_runbook", retrieve_runbook)
 graph.add_node("technical_agent", technical_agent)
 graph.add_node("billing_agent", billing_agent)
 graph.add_node("security_agent", security_agent)
@@ -271,10 +300,12 @@ graph.add_conditional_edges(
     route_to_agent,
     {
         "technical_agent": "technical_agent",
+        "retrieve_runbook": "retrieve_runbook",
         "billing_agent": "billing_agent",
         "security_agent": "security_agent",
     },
 )
+graph.add_edge("retrieve_runbook", "technical_agent")
 graph.add_conditional_edges(
     "technical_agent",
     check_followup,
@@ -294,21 +325,23 @@ graph.add_conditional_edges(
 checkpointer = MemorySaver()
 app = graph.compile(checkpointer=checkpointer)
 
-ticket = "Saya nggak bisa akses portal billing saya untuk cek invoice, errornya 'access denied'"
-config = {"configurable": {"thread_id": "handoff-test-1"}}
+ticket = "Service auth-api saya stuck, gimana cara restart yang benar?"
+config = {"configurable": {"thread_id": "rag-technical-test"}}
 result = app.invoke(
     {
         "messages": [ticket],
         "resolved_categories": [],
         "needs_followup": False,
         "followup_category": None,
+        "runbook_context": "",
     },
     config=config,
 )
 
-print("\n=== Multi-Agent Handoff Result ===")
+print("\n=== RAG Technical Agent Result ===")
 print("Ticket:", ticket)
 print("Final category:", result["category"])
+print("Runbook context:", result["runbook_context"])
 print("Needs followup:", result["needs_followup"])
 print("Followup category:", result["followup_category"])
 print("Resolved categories:", result["resolved_categories"])
