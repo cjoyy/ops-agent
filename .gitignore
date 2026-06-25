@@ -7,3 +7,4 @@ __pycache__/
 tickets.json
 *.db
 chroma_runbooks/
+checkpoints.sqlite*

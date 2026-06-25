@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.types import interrupt
@@ -254,11 +254,12 @@ def security_agent(state: GraphState) -> dict:
     else:
         approval_message = "Action dibatalkan, tiket di-escalate ke manual review"
 
-    followup_state = detect_followup(state, "security", approval_message)
     return {
         "security_approval": str(approval_result),
         "messages": [approval_message],
-        **followup_state,
+        "needs_followup": False,
+        "followup_category": None,
+        "resolved_categories": state.get("resolved_categories", []) + ["security"],
     }
 
 
@@ -322,28 +323,37 @@ graph.add_conditional_edges(
     {"supervisor": "supervisor", END: END},
 )
 
-checkpointer = MemorySaver()
-app = graph.compile(checkpointer=checkpointer)
 
-ticket = "Service auth-api saya stuck, gimana cara restart yang benar?"
-config = {"configurable": {"thread_id": "rag-technical-test"}}
-result = app.invoke(
-    {
-        "messages": [ticket],
-        "resolved_categories": [],
-        "needs_followup": False,
-        "followup_category": None,
-        "runbook_context": "",
-    },
-    config=config,
-)
+def get_app(checkpointer):
+    return graph.compile(checkpointer=checkpointer)
 
-print("\n=== RAG Technical Agent Result ===")
-print("Ticket:", ticket)
-print("Final category:", result["category"])
-print("Runbook context:", result["runbook_context"])
-print("Needs followup:", result["needs_followup"])
-print("Followup category:", result["followup_category"])
-print("Resolved categories:", result["resolved_categories"])
-print("Final message:", get_message_content(result["messages"][-1]))
-print("Final state:", app.get_state(config))
+
+def main():
+    with SqliteSaver.from_conn_string("checkpoints.sqlite") as checkpointer:
+        app = get_app(checkpointer)
+        ticket = "Service auth-api saya stuck, gimana cara restart yang benar?"
+        config = {"configurable": {"thread_id": "rag-technical-test"}}
+        result = app.invoke(
+            {
+                "messages": [ticket],
+                "resolved_categories": [],
+                "needs_followup": False,
+                "followup_category": None,
+                "runbook_context": "",
+            },
+            config=config,
+        )
+
+        print("\n=== RAG Technical Agent Result ===")
+        print("Ticket:", ticket)
+        print("Final category:", result["category"])
+        print("Runbook context:", result["runbook_context"])
+        print("Needs followup:", result["needs_followup"])
+        print("Followup category:", result["followup_category"])
+        print("Resolved categories:", result["resolved_categories"])
+        print("Final message:", get_message_content(result["messages"][-1]))
+        print("Final state:", app.get_state(config))
+
+
+if __name__ == "__main__":
+    main()
