@@ -1,3 +1,4 @@
+import time
 from typing import Annotated, Literal, Optional, TypedDict
 
 from dotenv import load_dotenv
@@ -80,19 +81,25 @@ def refund_policy(reason: str) -> str:
 
 
 def supervisor(state: GraphState) -> dict:
+    t0 = time.perf_counter()
     if state.get("needs_followup") and state.get("followup_category"):
         category = state["followup_category"]
         if state.get("debug", True):
             print("[DEBUG] supervisor pakai followup_category:", category)
+        elapsed = time.perf_counter() - t0
+        print(f"[TIMING] supervisor (followup): {elapsed:.3f}s")
         return {"category": category}
 
     result = classifier.invoke(state["messages"])
     if state.get("debug", True):
         print("Debug classification:", result)
+    elapsed = time.perf_counter() - t0
+    print(f"[TIMING] supervisor (classify): {elapsed:.3f}s")
     return {"category": result.category}
 
 
 def detect_followup(state: GraphState, agent_category: str, final_answer: str) -> dict:
+    t0 = time.perf_counter()
     original_ticket = get_message_content(state["messages"][0])
     prompt = (
         "Berdasarkan ticket asli dan jawaban yang sudah diberikan, apakah ada "
@@ -113,8 +120,10 @@ def detect_followup(state: GraphState, agent_category: str, final_answer: str) -
         needs_followup = decision.needs_followup
         followup_category = decision.followup_category
 
+    elapsed = time.perf_counter() - t0
     print("[DEBUG] followup decision:", decision)
     print("[DEBUG] resolved_categories:", resolved_categories)
+    print(f"[TIMING] detect_followup: {elapsed:.3f}s")
     return {
         "needs_followup": needs_followup,
         "followup_category": followup_category,
@@ -123,6 +132,7 @@ def detect_followup(state: GraphState, agent_category: str, final_answer: str) -
 
 
 def technical_agent(state: GraphState) -> dict:
+    t0 = time.perf_counter()
     print("[DEBUG] masuk ke technical_agent")
     original_ticket = get_message_content(state["messages"][0]).lower()
     should_bind_restart_tool = "restart" in original_ticket
@@ -164,12 +174,15 @@ def technical_agent(state: GraphState) -> dict:
         print("[DEBUG] tool triggered:", False)
         final_response = response
 
+    elapsed = time.perf_counter() - t0
     print("[DEBUG] final answer:", final_response.content)
+    print(f"[TIMING] technical_agent: {elapsed:.3f}s")
     followup_state = detect_followup(state, "technical", final_response.content)
     return {"messages": [final_response], **followup_state}
 
 
 def retrieve_runbook(state: GraphState) -> dict:
+    t0 = time.perf_counter()
     print("[DEBUG] masuk ke retrieve_runbook")
     ticket = get_message_content(state["messages"][0])
     retriever = get_retriever()
@@ -181,11 +194,14 @@ def retrieve_runbook(state: GraphState) -> dict:
         context_parts.append(f"Source: {source}\n{doc.page_content}")
 
     runbook_context = "\n\n---\n\n".join(context_parts)
+    elapsed = time.perf_counter() - t0
     print("[DEBUG] runbook_context:\n", runbook_context)
+    print(f"[TIMING] retrieve_runbook: {elapsed:.3f}s")
     return {"runbook_context": runbook_context}
 
 
 def billing_agent(state: GraphState) -> dict:
+    t0 = time.perf_counter()
     print("[DEBUG] masuk ke billing_agent")
     tools = [check_invoice, refund_policy]
     tools_by_name = {tool.name: tool for tool in tools}
@@ -230,7 +246,9 @@ def billing_agent(state: GraphState) -> dict:
             ]
         )
 
+    elapsed = time.perf_counter() - t0
     print("[DEBUG] final answer:", final_response.content)
+    print(f"[TIMING] billing_agent: {elapsed:.3f}s")
     followup_state = detect_followup(state, "billing", final_response.content)
     return {"messages": [final_response], **followup_state}
 
@@ -242,6 +260,7 @@ def get_message_content(message) -> str:
 
 
 def security_agent(state: GraphState) -> dict:
+    t0 = time.perf_counter()
     print("[DEBUG] masuk ke security_agent")
     ticket_summary = get_message_content(state["messages"][-1])
     approval_result = interrupt(
@@ -256,6 +275,8 @@ def security_agent(state: GraphState) -> dict:
     else:
         approval_message = "Action dibatalkan, tiket di-escalate ke manual review"
 
+    elapsed = time.perf_counter() - t0
+    print(f"[TIMING] security_agent: {elapsed:.3f}s")
     return {
         "security_approval": str(approval_result),
         "messages": [approval_message],
